@@ -569,17 +569,17 @@ class VirtualPatientModel(VirtualPatient):
         self.name = "VP-{}".format(id)
 
         # No meals
-        # self.meal_model = [
-        #     MealModel("Breakfast", datetime.time(hour=7), datetime.time(hour=10), 0.98),
-        # ]
-
         self.meal_model = [
             MealModel("Breakfast", datetime.time(hour=7), datetime.time(hour=10), 0.98),
-            MealModel("Snack", datetime.time(hour=10), datetime.time(hour=11), 0.05),
-            MealModel("Lunch", datetime.time(hour=11), datetime.time(hour=13), 0.98),
-            MealModel("Snack", datetime.time(hour=14), datetime.time(hour=15), 0.05),
-            MealModel("Dinner", datetime.time(hour=17), datetime.time(hour=21), 0.999),
         ]
+
+        # self.meal_model = [
+        #     MealModel("Breakfast", datetime.time(hour=7), datetime.time(hour=10), 0.98),
+        #     MealModel("Snack", datetime.time(hour=10), datetime.time(hour=11), 0.05),
+        #     MealModel("Lunch", datetime.time(hour=11), datetime.time(hour=13), 0.98),
+        #     MealModel("Snack", datetime.time(hour=14), datetime.time(hour=15), 0.05),
+        #     MealModel("Dinner", datetime.time(hour=17), datetime.time(hour=21), 0.999),
+        # ]
 
         num_trials = int(self.patient_config.correct_bolus_delay_minutes / 5.0)
         self.correct_bolus_step_prob = get_bernoulli_trial_uniform_step_prob(
