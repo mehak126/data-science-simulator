@@ -21,8 +21,11 @@ from tidepool_data_science_simulator.makedata.make_simulation import get_canonic
 from tidepool_data_science_simulator.makedata.make_patient import (
     get_canonical_risk_pump_config,
     get_canonical_virtual_patient_model_config,
-    get_canonical_sensor_config
+    get_canonical_sensor_config,
+    DATETIME_DEFAULT
 )
+from tidepool_data_science_simulator.models.events import CarbTimeline
+from tidepool_data_science_simulator.models.measures import Carb
 
 from tidepool_data_science_simulator.visualization.sim_viz import plot_sim_results
 from tidepool_data_science_simulator.run import run_simulations
@@ -32,7 +35,7 @@ formatter = mdates.DateFormatter('%H:%M')
 cmap = plt.cm.plasma_r
 
 
-def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, bolus_timeline=None, duration_hrs=1):
+def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, pump_carb_timeline=None, bolus_timeline=None, duration_hrs=1, controller_class=LoopController):
     """
     Look at resulting bgs from settings that are correct/incorrect for analysis.
 
@@ -45,19 +48,19 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
         Parameters to vary
     """
     
-    t0, patient_config = get_canonical_virtual_patient_model_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf) # patient has many attributes e.g. starting glucose (default: 110), recommendatio accept probability, etc.    
+    t0, patient_config = get_canonical_virtual_patient_model_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline) # patient has many attributes e.g. starting glucose (default: 110), recommendatio accept probability, etc.    
     
     t0, sensor_config = get_canonical_sensor_config(t0, start_value = start_glucose_value) # sensor config has a blood glucose history. right now looks like the starting value repeated 'n' times every 5 minutes before t0
     
 
-    t0, pump_config = get_canonical_risk_pump_config(t0, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max) # sets a carb timeline, bolus timeline (both initialized with 0 at t=0, assuming new values are then added on), basal schedule (e.g. 0.3 units delivered for 24 hours), carb ratio schedule (e.g. constant carb ratio of 20 for 24 hours). similarly for ISR and target range. ques: is there a schedule different from 24 hours?
+    t0, pump_config = get_canonical_risk_pump_config(t0, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=pump_carb_timeline) # sets a carb timeline, bolus timeline (both initialized with 0 at t=0, assuming new values are then added on), basal schedule (e.g. 0.3 units delivered for 24 hours), carb ratio schedule (e.g. constant carb ratio of 20 for 24 hours). similarly for ISR and target range. ques: is there a schedule different from 24 hours?
 
     patient_config.recommendation_accept_prob = 1.0  # Accept the bolus
 
 
     sims = {}
-    for exercise_preset_p in np.arange(0.1, 1.09, 0.1):
-    # for exercise_preset_p in [1]:
+    # for exercise_preset_p in np.arange(0.1, 1.09, 0.1):
+    for exercise_preset_p in [1]:
         
         basal_p_factor = -1 + exercise_preset_p  # note: funky math because of how override function works
         pump_config.basal_schedule.set_override(basal_p_factor)
@@ -78,7 +81,7 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
             sensor_class=IdealSensor,
             pump_config=pump_config,
             pump_class=ContinuousInsulinPump,
-            controller_class=LoopController,
+            controller_class=controller_class,
             multiprocess=True,
             duration_hrs=duration_hrs,
         )
@@ -127,7 +130,7 @@ def plot_insulin_changes(all_results, save_dir):
 
 if __name__ == "__main__":
     
-    start_glucose_value = 110
+    start_glucose_value = 100
     basal_rate = 0.8
     cir = 8.0
     isf = 30.0    
@@ -135,14 +138,21 @@ if __name__ == "__main__":
     target_range_min = 100
     target_range_max = 120
     
-    carb_timeline = None
+    # carb_timeline = None
+    t0 = DATETIME_DEFAULT
+    carb_timeline = CarbTimeline([t0], [Carb(30.0, "g", 180)])
+    pump_carb_timeline = CarbTimeline([t0], [Carb(40.0, "g", 180)])
+    
     bolus_timeline = None
     
     duration_hrs = 1
+    
+    controller_class = LoopController
+    # controller_class = DoNothingController
 
-    sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline, duration_hrs=duration_hrs)
+    sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=carb_timeline, pump_carb_timeline=pump_carb_timeline, bolus_timeline=bolus_timeline, duration_hrs=duration_hrs, controller_class=controller_class)
 
-    save_dir = "./simulation_results/"
+    save_dir = f"./simulation_results/bg{start_glucose_value}_{controller_class.__name__}_carb_over/"
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
         

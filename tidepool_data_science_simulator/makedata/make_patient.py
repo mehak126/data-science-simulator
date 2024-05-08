@@ -124,7 +124,7 @@ def get_canonical_sensor_config(t0=DATETIME_DEFAULT, num_glucose_values=137, sta
     return t0, sensor_config
 
 
-def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0):
+def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None):
     """
     Get canonical patient config
 
@@ -137,8 +137,13 @@ def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=1
     PatientConfig
     """
 
-    patient_carb_timeline = CarbTimeline([t0], [Carb(0.0, "g", 180)])
-    patient_bolus_timeline = BolusTimeline([t0], [Bolus(0.0, "U")])
+    patient_carb_timeline = carb_timeline
+    if patient_carb_timeline is None:
+        patient_carb_timeline = CarbTimeline([t0], [Carb(0.0, "g", 180)])
+    
+    patient_bolus_timeline = bolus_timeline
+    if patient_bolus_timeline is None:
+        patient_bolus_timeline = BolusTimeline([t0], [Bolus(0.0, "U")])
 
     true_bg_history = get_canonical_glucose_history(t0, start_value=start_glucose_value)
 
@@ -285,12 +290,12 @@ def get_variable_risk_patient_config(random_state, t0=DATETIME_DEFAULT):
     return t0, patient_config
 
 
-def get_canonical_virtual_patient_model_config(random_state=None, start_glucose_value = 110, basal_rate=0.3, cir=20.0, isf=150.0):
+def get_canonical_virtual_patient_model_config(random_state=None, start_glucose_value = 110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None):
 
     if random_state is None:
         random_state = np.random.RandomState(0)
 
-    t0, patient_config = get_canonical_risk_patient_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf)
+    t0, patient_config = get_canonical_risk_patient_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline)
 
     patient_config.recommendation_accept_prob = random_state.uniform(0.8, 0.99)
     patient_config.min_bolus_rec_threshold = random_state.uniform(0.4, 0.6)
