@@ -251,6 +251,7 @@ class VirtualPatient(SimulationComponent):
             basal rate since t=-prediction_horizon_hrs
         """
         metabolism_model_instance = self.instantiate_metabolism_model()
+        print(f"Instantiating Metabolism Model with rate: {basal_rate.value}")
         return metabolism_model_instance.get_iob_from_sbr(basal_rate.value)
 
     def get_basal_insulin_amount_since_update(self):
@@ -569,9 +570,7 @@ class VirtualPatientModel(VirtualPatient):
         self.name = "VP-{}".format(id)
 
         # No meals
-        self.meal_model = [
-            MealModel("Breakfast", datetime.time(hour=7), datetime.time(hour=10), 0.98),
-        ]
+        self.meal_model = []
 
         # self.meal_model = [
         #     MealModel("Breakfast", datetime.time(hour=7), datetime.time(hour=10), 0.98),
