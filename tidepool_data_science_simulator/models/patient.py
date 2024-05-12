@@ -251,7 +251,6 @@ class VirtualPatient(SimulationComponent):
             basal rate since t=-prediction_horizon_hrs
         """
         metabolism_model_instance = self.instantiate_metabolism_model()
-        print(f"Instantiating Metabolism Model with rate: {basal_rate.value}")
         return metabolism_model_instance.get_iob_from_sbr(basal_rate.value)
 
     def get_basal_insulin_amount_since_update(self):
@@ -352,14 +351,15 @@ class VirtualPatient(SimulationComponent):
         return pump_bolus_event_timeline, pump_carb_event_timeline, pump_temp_basal_event_timeline
 
     def add_event(self, time_of_event, event):
-
         # Add event to patient and pump timeline
         if isinstance(event, Bolus):
             self.bolus_event_timeline.add_event(time_of_event, event)
             self.pump.bolus_event_timeline.add_event(time_of_event, event)
-        elif isinstance(event, Carb):
-            self.bolus_event_timeline.add_event(time_of_event, event)
-            self.pump.bolus_event_timeline.add_event(time_of_event, event)
+        elif isinstance(event, Carb): # note --> should this be in the carb_timeline?
+            # self.bolus_event_timeline.add_event(time_of_event, event)
+            # self.pump.bolus_event_timeline.add_event(time_of_event, event)
+            self.carb_event_timeline.add_event(time_of_event, event)
+            self.pump.carb_event_timeline.add_event(time_of_event, event)
         else:
             raise Exception("Unsupported event to add.")
 
@@ -409,7 +409,6 @@ class VirtualPatient(SimulationComponent):
                 self.iob_prediction[1:], 0
             )
             self.iob_prediction = iob_pred + iob_pred_shifted
-
         pass
 
     def run_metabolism_model(self, insulin_amount, carb_amount):
@@ -637,35 +636,40 @@ class VirtualPatientModel(VirtualPatient):
         """
         Get carb and insulin inputs.
         """
-        meal = self.get_meal()
 
-        meal_carb = None
-        meal_carb_estimate = None
-        if meal is not None:
-            if meal.name == "Snack":
-                random_key = "snack"
-            else:
-                random_key = "meal"
-            meal_carb = Carb(value=self.random_values["{}_carbs".format(random_key)][0],
-                             units="g",
-                             duration_minutes=self.random_values["{}_carb_durations".format(random_key)][0])
-            meal_carb_estimate = Carb(value=self.random_values["{}_carb_estimates".format(random_key)][0],
-                             units="g",
-                             duration_minutes=self.random_values["{}_carb_duration_estimates".format(random_key)][0])
+# Commented by Mehak -- since we're only considering carbs in the carb timeline (no correction/meal carbs)
+        # meal = self.get_meal()
 
-        correction_carb, correction_carb_estimate = self.get_correction_carb()
+        # meal_carb = None
+        # meal_carb_estimate = None
+        # if meal is not None:
+        #     if meal.name == "Snack":
+        #         random_key = "snack"
+        #     else:
+        #         random_key = "meal"
+        #     meal_carb = Carb(value=self.random_values["{}_carbs".format(random_key)][0],
+        #                      units="g",
+        #                      duration_minutes=self.random_values["{}_carb_durations".format(random_key)][0])
+        #     meal_carb_estimate = Carb(value=self.random_values["{}_carb_estimates".format(random_key)][0],
+        #                      units="g",
+        #                      duration_minutes=self.random_values["{}_carb_duration_estimates".format(random_key)][0])
 
-        total_carb = self.combine_carbs(meal_carb, correction_carb)
-        total_carb_estimate = self.combine_carbs(meal_carb_estimate, correction_carb_estimate)
+        # correction_carb, correction_carb_estimate = self.get_correction_carb()
 
+        # total_carb = self.combine_carbs(meal_carb, correction_carb)
+        # total_carb_estimate = self.combine_carbs(meal_carb_estimate, correction_carb_estimate)
+
+        # if total_carb is not None:
+        #     carb_time = self.time + datetime.timedelta(minutes=self.random_values["prebolus_offset_minutes"])
+        #     carb_time_reported = self.time + datetime.timedelta(minutes=self.random_values["carb_reported_minutes"])
+        #     self.carb_event_timeline.add_event(carb_time, total_carb)  # Actual carbs go to patient predict
+        #     self.report_carb(total_carb_estimate, carb_time_reported)  # Reported carbs go to Loop
+
+
+        total_carb = self.carb_event_timeline.get_event(self.time)
+        
         # This is set from Loop controller
         total_bolus = self.bolus_event_timeline.get_event(self.time)
-
-        if total_carb is not None:
-            carb_time = self.time + datetime.timedelta(minutes=self.random_values["prebolus_offset_minutes"])
-            carb_time_reported = self.time + datetime.timedelta(minutes=self.random_values["carb_reported_minutes"])
-            self.carb_event_timeline.add_event(carb_time, total_carb)  # Actual carbs go to patient predict
-            self.report_carb(total_carb_estimate, carb_time_reported)  # Reported carbs go to Loop
 
         return total_bolus, total_carb
 

@@ -31,6 +31,8 @@ from tidepool_data_science_simulator.run import run_simulations
 from tidepool_data_science_simulator.models.events import CarbTimeline, BolusTimeline
 from tidepool_data_science_simulator.models.measures import Carb, Bolus
 
+import datetime
+
 import matplotlib.dates as mdates
 formatter = mdates.DateFormatter('%H:%M')
 cmap = plt.cm.plasma_r
@@ -60,7 +62,6 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
     
     sims = {}
     for exercise_preset_p in np.arange(0.1, 1.09, 0.1):
-    # for exercise_preset_p in [0.1]:
         
         basal_p_factor = -1 + exercise_preset_p  # note: funky math because of how override function works
         pump_config.basal_schedule.set_override(basal_p_factor)
@@ -70,6 +71,11 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
 
         cir_p_factor = -1 + 1 / (exercise_preset_p)  # note: funky math because of how override function works
         pump_config.carb_ratio_schedule.set_override(cir_p_factor)
+        
+        # update patient config with preset too
+        # patient_config.basal_schedule.set_override(basal_p_factor)
+        # patient_config.insulin_sensitivity_schedule.set_override(isf_p_factor)
+        # patient_config.carb_ratio_schedule.set_override(cir_p_factor)
 
         sensor_config.std_dev = 1.0 # ques: what does this do
 
@@ -92,6 +98,11 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
         pump_config.basal_schedule.unset_override()
         pump_config.insulin_sensitivity_schedule.unset_override()
         pump_config.carb_ratio_schedule.unset_override()
+        
+        # unset preset override in patient config
+        # patient_config.basal_schedule.unset_override()
+        # patient_config.insulin_sensitivity_schedule.unset_override()
+        # patient_config.carb_ratio_schedule.unset_override()
 
     return sims
 
@@ -139,13 +150,13 @@ if __name__ == "__main__":
     target_range_max = 120
     
     t0 = DATETIME_DEFAULT
-    # carb_timeline = CarbTimeline([t0], [Carb(20, "g", 180)])
-    carb_timeline = None
-    # bolus_timeline = BolusTimeline([t0], [Bolus(1.0, "U")])
+    carb_timeline = CarbTimeline([t0], [Carb(20, "g", 180)])
+    # carb_timeline = None
+    # bolus_timeline = BolusTimeline([t0+datetime.timedelta(minutes=5)], [Bolus(1.0, "U")])
     bolus_timeline = None
     
-    # controller = DoNothingController
-    controller = LoopController
+    controller = DoNothingController
+    # controller = LoopController
     
     duration_hrs = 8
 
