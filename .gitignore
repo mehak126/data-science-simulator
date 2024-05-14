@@ -103,3 +103,5 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# KT: simulation results, since we are using google drive for sharing
+simulation_results
