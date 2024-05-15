@@ -152,10 +152,10 @@ if __name__ == "__main__":
     target_range_max = 120
     
     t0 = DATETIME_DEFAULT
-    carb_timeline = CarbTimeline([t0], [Carb(20, "g", 180)])
-    # carb_timeline = None
-    # bolus_timeline = BolusTimeline([t0+datetime.timedelta(minutes=5)], [Bolus(1.0, "U")])
-    bolus_timeline = None
+    # carb_timeline = CarbTimeline([t0], [Carb(20, "g", 180)])
+    carb_timeline = CarbTimeline()
+    # bolus_timeline = BolusTimeline([t0], [Bolus(1.0, "U")])
+    bolus_timeline = BolusTimeline()
     
     # controller = DoNothingController
     controller = LoopController
@@ -203,7 +203,7 @@ if __name__ == "__main__":
         # results.append(entry)
 
         # get the simulated results
-        plot_df = results_df.reset_index().iloc[-12 * duration_hrs:]
+        plot_df = results_df.reset_index().iloc[-13 * duration_hrs:]
         plot_df.fillna(0, inplace=True)
         plot_df["total_delivered"] = plot_df["delivered_basal_insulin"] + plot_df["true_bolus"]
         

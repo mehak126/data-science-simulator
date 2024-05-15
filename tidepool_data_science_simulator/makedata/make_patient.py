@@ -65,11 +65,11 @@ def get_canonical_risk_pump_config(t0=DATETIME_DEFAULT, basal_rate=0.3, cir=20.0
     """
 
     if carb_timeline is None:
-        pump_carb_timeline = CarbTimeline([t0], [Carb(0.0, "g", 180)])
+        pump_carb_timeline = CarbTimeline()
     else:
         pump_carb_timeline = carb_timeline
     if bolus_timeline is None:
-        pump_bolus_timeline = BolusTimeline([t0], [Bolus(0.0, "U")])
+        pump_bolus_timeline = BolusTimeline()
     else:
         pump_bolus_timeline = bolus_timeline
 
@@ -139,11 +139,11 @@ def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=1
 
     
     if carb_timeline is None:
-        patient_carb_timeline = CarbTimeline([t0], [Carb(0.0, "g", 180)])
+        patient_carb_timeline = CarbTimeline()
     else:
         patient_carb_timeline = carb_timeline
     if bolus_timeline is None:
-        patient_bolus_timeline = BolusTimeline([t0], [Bolus(0.0, "U")])
+        patient_bolus_timeline = BolusTimeline()
     else:
         patient_bolus_timeline = bolus_timeline
 
@@ -308,7 +308,7 @@ def get_canonical_virtual_patient_model_config(random_state=None, start_glucose_
     patient_config.carb_count_noise_percentage = random_state.uniform(0.0, 0.0) # no noise in carb reporting
     patient_config.report_bolus_probability = random_state.uniform(1.0, 1.0)  # always report bolus
     patient_config.report_carb_probability = random_state.uniform(1.0, 1.0) # always report carbs
-    patient_config.recommendation_meal_attention_time_minutes = 10
+    patient_config.recommendation_meal_attention_time_minutes = 10 # accept bolus rec if last meal was xx minutes
 
     patient_config.prebolus_minutes_choices = [0]
     patient_config.carb_reported_minutes_choices = [0]
