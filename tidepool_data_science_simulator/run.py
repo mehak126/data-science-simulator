@@ -12,6 +12,7 @@ import pandas as pd
 import pdb
 
 # Setup Logging
+logging.disable(logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
 from tidepool_data_science_simulator.utils import timing, save_df
