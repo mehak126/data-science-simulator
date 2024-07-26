@@ -38,7 +38,7 @@ formatter = mdates.DateFormatter('%H:%M')
 cmap = plt.cm.plasma_r
 
 
-def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, bolus_timeline=None, duration_hrs=1, controller=LoopController):
+def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, pump_carb_timeline=None ,bolus_timeline=None, duration_hrs=1, controller=LoopController):
     """
     Look at resulting bgs from settings that are correct/incorrect for analysis.
 
@@ -54,13 +54,14 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
     
     
     sims = {}
-    for exercise_preset_p in np.arange(0.1, 1.09, 0.1):
+    for exercise_preset_p in np.arange(0.2, 1.09, 0.2):
+    # for exercise_preset_p in [1.0, 0.5, 0.1]:
         t0, patient_config = get_canonical_virtual_patient_model_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline) # patient has many attributes e.g. starting glucose (default: 110), recommendatio accept probability, etc.    
         
         t0, sensor_config = get_canonical_sensor_config(t0, start_value = start_glucose_value) # sensor config has a blood glucose history. right now looks like the starting value repeated 'n' times every 5 minutes before t0
         
 
-        t0, pump_config = get_canonical_risk_pump_config(t0, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline) # sets a carb timeline, bolus timeline (both initialized with 0 at t=0, assuming new values are then added on), basal schedule (e.g. 0.3 units delivered for 24 hours), carb ratio schedule (e.g. constant carb ratio of 20 for 24 hours). similarly for ISR and target range. ques: is there a schedule different from 24 hours?
+        t0, pump_config = get_canonical_risk_pump_config(t0, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=pump_carb_timeline, bolus_timeline=bolus_timeline) # sets a carb timeline, bolus timeline (both initialized with 0 at t=0, assuming new values are then added on), basal schedule (e.g. 0.3 units delivered for 24 hours), carb ratio schedule (e.g. constant carb ratio of 20 for 24 hours). similarly for ISR and target range. ques: is there a schedule different from 24 hours?
 
         patient_config.recommendation_accept_prob = 1.0  # Accept the bolus
         
@@ -154,6 +155,7 @@ if __name__ == "__main__":
     t0 = DATETIME_DEFAULT
     # carb_timeline = CarbTimeline([t0], [Carb(20, "g", 180)])
     carb_timeline = CarbTimeline()
+    pump_carb_timeline = CarbTimeline()
     # bolus_timeline = BolusTimeline([t0], [Bolus(1.0, "U")])
     bolus_timeline = BolusTimeline()
     
@@ -162,9 +164,9 @@ if __name__ == "__main__":
     
     duration_hrs = 8
 
-    sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline, duration_hrs=duration_hrs, controller=controller)
+    sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=carb_timeline, pump_carb_timeline=pump_carb_timeline, bolus_timeline=bolus_timeline, duration_hrs=duration_hrs, controller=controller)
 
-    save_dir = "./simulation_results/"
+    save_dir = "./simulation_results/helmsley_call_sims"
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
         

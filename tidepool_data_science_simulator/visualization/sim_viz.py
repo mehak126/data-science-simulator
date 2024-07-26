@@ -43,9 +43,10 @@ def plot_sim_results(all_results, save=False, n_sims_max_legend=5, save_path=Non
     color_cycle = itertools.cycle(mcolors.BASE_COLORS)
 
     for sim_id, ctrl_result_df in all_results.items():
-
+        
+        ctrl_result_df = ctrl_result_df.iloc[100:]
+        
         sim_color = next(color_cycle)
-
         ax[0].plot(ctrl_result_df["bg"],
                    label="{} {}".format("bg", sim_id),
                    color=sim_color,
