@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 from tidepool_data_science_simulator.models.simulation import (
     SettingSchedule24Hr, BasalSchedule24hr, TargetRangeSchedule24hr
 )
-from tidepool_data_science_simulator.models.events import CarbTimeline, BolusTimeline, ActionTimeline
+from tidepool_data_science_simulator.models.events import CarbTimeline, BolusTimeline, ActionTimeline, HRTimeline
 from tidepool_data_science_simulator.makedata.scenario_parser import PumpConfig, PatientConfig, SensorConfig
 from tidepool_data_science_simulator.models.measures import (
     InsulinSensitivityFactor, GlucoseSensitivityFactor, BasalBloodGlucose, InsulinProductionRate,
@@ -52,7 +52,7 @@ def get_canonical_glucose_history(t0, num_glucose_values=137, start_value=110):
     return true_bg_history
 
 
-def get_canonical_risk_pump_config(t0=DATETIME_DEFAULT):
+def get_canonical_risk_pump_config(t0=DATETIME_DEFAULT, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, bolus_timeline=None):
     """
     Get canonical pump config
 
@@ -65,34 +65,40 @@ def get_canonical_risk_pump_config(t0=DATETIME_DEFAULT):
     PumpConfig
     """
 
-    pump_carb_timeline = CarbTimeline([t0], [Carb(0.0, "g", 180)])
-    pump_bolus_timeline = BolusTimeline([t0], [Bolus(0.0, "U")])
+    if carb_timeline is None:
+        pump_carb_timeline = CarbTimeline()
+    else:
+        pump_carb_timeline = carb_timeline
+    if bolus_timeline is None:
+        pump_bolus_timeline = BolusTimeline()
+    else:
+        pump_bolus_timeline = bolus_timeline
 
     pump_config = PumpConfig(
         basal_schedule=BasalSchedule24hr(
             t0,
             start_times=[SINGLE_SETTING_START_TIME],
-            values=[BasalRate(0.3, "U/hr")],
+            values=[BasalRate(basal_rate, "U/hr")],
             duration_minutes=[SINGLE_SETTING_DURATION]
         ),
         carb_ratio_schedule=SettingSchedule24Hr(
             t0,
             "CIR",
             start_times=[SINGLE_SETTING_START_TIME],
-            values=[CarbInsulinRatio(20.0, "g/U")],
+            values=[CarbInsulinRatio(cir, "g/U")],
             duration_minutes=[SINGLE_SETTING_DURATION]
         ),
         insulin_sensitivity_schedule=SettingSchedule24Hr(
             t0,
             "ISF",
             start_times=[SINGLE_SETTING_START_TIME],
-            values=[InsulinSensitivityFactor(150.0, "mg/dL/U")],
+            values=[InsulinSensitivityFactor(isf, "mg/dL/U")],
             duration_minutes=[SINGLE_SETTING_DURATION]
         ),
         target_range_schedule=TargetRangeSchedule24hr(
             t0,
             start_times=[SINGLE_SETTING_START_TIME],
-            values=[TargetRange(100, 120, "mg/dL")],
+            values=[TargetRange(target_range_min, target_range_max, "mg/dL")],
             duration_minutes=[SINGLE_SETTING_DURATION]
         ),
         carb_event_timeline=pump_carb_timeline,
@@ -119,7 +125,7 @@ def get_canonical_sensor_config(t0=DATETIME_DEFAULT, num_glucose_values=137, sta
     return t0, sensor_config
 
 
-def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=110):
+def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None, heart_rate_timeline=None):
     """
     Get canonical patient config
 
@@ -132,8 +138,17 @@ def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=1
     PatientConfig
     """
 
-    patient_carb_timeline = CarbTimeline([t0], [Carb(0.0, "g", 180)])
-    patient_bolus_timeline = BolusTimeline([t0], [Bolus(0.0, "U")])
+    if carb_timeline is None:
+        patient_carb_timeline = CarbTimeline()
+    else:
+        patient_carb_timeline = carb_timeline
+    if bolus_timeline is None:
+        patient_bolus_timeline = BolusTimeline()
+    else:
+        patient_bolus_timeline = bolus_timeline
+    if heart_rate_timeline is None:
+        heart_rate_timeline = HRTimeline()
+        
 
     true_bg_history = get_canonical_glucose_history(t0, start_value=start_glucose_value)
 
@@ -141,26 +156,27 @@ def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=1
         basal_schedule=BasalSchedule24hr(
             t0,
             start_times=[SINGLE_SETTING_START_TIME],
-            values=[BasalRate(0.3, "mg/dL")],
+            values=[BasalRate(basal_rate, "mg/dL")],
             duration_minutes=[SINGLE_SETTING_DURATION]
         ),
         carb_ratio_schedule=SettingSchedule24Hr(
             t0,
             "CIR",
             start_times=[SINGLE_SETTING_START_TIME],
-            values=[CarbInsulinRatio(20.0, "g/U")],
+            values=[CarbInsulinRatio(cir, "g/U")],
             duration_minutes=[SINGLE_SETTING_DURATION]
         ),
         insulin_sensitivity_schedule=SettingSchedule24Hr(
             t0,
             "ISF",
             start_times=[SINGLE_SETTING_START_TIME],
-            values=[InsulinSensitivityFactor(150.0, "md/dL / U")],
+            values=[InsulinSensitivityFactor(isf, "md/dL / U")],
             duration_minutes=[SINGLE_SETTING_DURATION]
         ),
         glucose_history=true_bg_history,
         carb_event_timeline=patient_carb_timeline,
         bolus_event_timeline=patient_bolus_timeline,
+        heart_rate_timeline = heart_rate_timeline,
         action_timeline=ActionTimeline(),
     )
 
@@ -280,23 +296,24 @@ def get_variable_risk_patient_config(random_state, t0=DATETIME_DEFAULT):
     return t0, patient_config
 
 
-def get_canonical_virtual_patient_model_config(random_state=None):
+def get_canonical_virtual_patient_model_config(random_state=None, start_glucose_value = 110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None, heart_rate_timeline=None):
 
     if random_state is None:
         random_state = np.random.RandomState(0)
 
-    t0, patient_config = get_canonical_risk_patient_config()
+    t0, patient_config = get_canonical_risk_patient_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline, heart_rate_timeline=heart_rate_timeline)
 
-    patient_config.recommendation_accept_prob = random_state.uniform(0.8, 0.99)
-    patient_config.min_bolus_rec_threshold = random_state.uniform(0.4, 0.6)
-    patient_config.correct_bolus_bg_threshold = random_state.uniform(140, 190)  # no impact
+    patient_config.recommendation_accept_prob = random_state.uniform(1.0, 1.0) # always accept recommendations
+    patient_config.min_bolus_rec_threshold = random_state.uniform(0.0, 0.0) # todo: where does this factor in?
+    patient_config.correct_bolus_bg_threshold = random_state.uniform(500, 500)  # no correction bolus by user (assuming bg never reaches 500)
     patient_config.correct_bolus_delay_minutes = random_state.uniform(20, 40)  # no impact
-    patient_config.correct_carb_bg_threshold = random_state.uniform(70, 90)
-    patient_config.correct_carb_delay_minutes = random_state.uniform(5, 15)
-    patient_config.carb_count_noise_percentage = random_state.uniform(0.1, 0.25)
-    patient_config.report_bolus_probability = random_state.uniform(1.0, 1.0)  # no impact
-    patient_config.report_carb_probability = random_state.uniform(0.95, 1.0)
-    patient_config.recommendation_meal_attention_time_minutes = np.inf
+    patient_config.correct_carb_bg_threshold = random_state.uniform(0.0, 0.0) # no correction carbs by user
+    patient_config.correct_carb_delay_minutes = random_state.uniform(5, 15) # should have no impact if prev value is 0
+    patient_config.carb_count_noise_percentage = random_state.uniform(0.0, 0.0) # no noise in carb reporting
+    patient_config.report_bolus_probability = random_state.uniform(1.0, 1.0)  # always report bolus
+    patient_config.report_carb_probability = random_state.uniform(1.0, 1.0) # always report carbs
+    patient_config.recommendation_meal_attention_time_minutes = 10 # accept bolus rec if last meal was xx minutes
+    # patient_config.autobolus_enabled = True
 
     patient_config.prebolus_minutes_choices = [0]
     patient_config.carb_reported_minutes_choices = [0]

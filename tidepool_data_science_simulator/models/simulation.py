@@ -51,10 +51,11 @@ class SimulationState(object):
 
     def __repr__(self):
 
-        return "BG: {:.2f}, IOB: {:.2f} Temp Basal: {}".format(
+        return "BG: {:.2f}, IOB: {:.2f} Temp Basal: {}, Heart Rate: {}".format(
             self.patient_state.bg,
             self.patient_state.iob,
             self.patient_state.pump_state.temp_basal_rate,
+            self.patient_state.heart_rate
         )
 
 

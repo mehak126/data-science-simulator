@@ -170,6 +170,13 @@ class Bolus(Measure):
     """
     def __init__(self, value, units):
         super().__init__(value, units)
+        
+class HeartRate(Measure):
+    """
+    Heart Rate
+    """
+    def __init__(self, value, units):
+        super().__init__(value, units)
 
 
 class ManualBolus(Bolus):

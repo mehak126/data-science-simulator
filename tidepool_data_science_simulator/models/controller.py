@@ -294,7 +294,6 @@ class LoopController(BaseControllerClass):
         -------
         Bolus
         """
-
         autobolus = None
         autobolus_value_array = loop_algorithm_output.get('recommended_autobolus')
 
