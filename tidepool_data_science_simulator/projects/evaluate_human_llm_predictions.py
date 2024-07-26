@@ -1,4 +1,7 @@
+from ftplib import FTP_PORT
 import sys
+
+# from models.simulation import Simulation
 sys.path.append('..')
 sys.path.append('../../')
 sys.path.append('../../..')
@@ -56,10 +59,7 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
     
     sims = {}
     count = 0
-    # for exercise_preset_p in np.arange(0.1, 1.09, 0.1):
     for carb_timeline, pump_carb_timeline, bolus_timeline in zip(carb_timeline_list, pump_carb_timeline_list, bolus_timeline_list):
-        # if not bolus_timeline:
-            # bolus_timeline = BolusTimeline()
         t0, patient_config = get_canonical_virtual_patient_model_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline) # patient has many attributes e.g. starting glucose (default: 110), recommendatio accept probability, etc.    
         
         t0, sensor_config = get_canonical_sensor_config(t0, start_value = start_glucose_value) # sensor config has a blood glucose history. right now looks like the starting value repeated 'n' times every 5 minutes before t0
@@ -141,77 +141,73 @@ if __name__ == "__main__":
     
     duration_hrs = 8
     
-    save_dir = "./simulation_results/carb_estimation_experiments_perfect_estimation"
+    save_dir = "./simulation_results/human_llm_eval"
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     
-    num_simulations = 1
+    simulation_inp_dir = "/home/mdhaliwal/data-science-simulator/tidepool_data_science_simulator/projects/human_simulation_inputs"
     
-    # true carb timeline
-    # carb_vals = [random.uniform(20, 100) for _ in range(num_simulations)] # generate random carb values
-    carb_vals = [50 for _ in range(num_simulations)] # generate random carb values
-    carb_timeline_list = [CarbTimeline([t0], [Carb(x, "g", 180)]) for x in carb_vals]
-    
-    # pump carb timeline
-    pump_timelines_dict = {
-        'perfectestimation': [CarbTimeline([t0], [Carb(x, "g", 180)]) for x in carb_vals],
-        'overestimation': [CarbTimeline([t0], [Carb(x + 0.5*x, "g", 180)]) for x in carb_vals],
-        'underestimation': [CarbTimeline([t0], [Carb(x - 0.5*x, "g", 180)]) for x in carb_vals],
-    }
-    
-    # bolus timelines (if not using controller)
-    bolus_timelines_dict = {
-        # 'perfectestimation': [BolusTimeline() for x in carb_vals],
-        'perfectestimation': [BolusTimeline([t0], [Bolus(x/cir, "U")]) for x in carb_vals],
-        'overestimation': [BolusTimeline([t0], [Bolus((x + 0.5*x)/cir, "U")]) for x in carb_vals],
-        'underestimation': [BolusTimeline([t0], [Bolus((x - 0.5*x)/cir, "U")]) for x in carb_vals],
-    }
-    
-    
-    for simulation_num in range(num_simulations):
-        print(f"Simulation num: {simulation_num}")
-        sim_dir = os.path.join(save_dir, f'{simulation_num}')
-        if not os.path.isdir(sim_dir):
-            os.makedirs(sim_dir)
-        true_carb_list = [carb_timeline_list[simulation_num]] * 3
-        pump_carb_list = [pump_timelines_dict['perfectestimation'][simulation_num]]
-        pump_carb_list.append(pump_timelines_dict['overestimation'][simulation_num])
-        pump_carb_list.append(pump_timelines_dict['underestimation'][simulation_num])
+    for index, fname in enumerate(os.listdir(simulation_inp_dir)):
+        print(f"{index}: {fname}")
+        if index != 22:
+            continue
+        fpath = os.path.join(simulation_inp_dir, fname)
+        inp_df = pd.read_csv(fpath)
+        inp_df = inp_df[~inp_df.apply(lambda row: row.isin([-1]).any(), axis=1)]
         
-        bolus_list = [bolus_timelines_dict['perfectestimation'][simulation_num]]
-        bolus_list.append(bolus_timelines_dict['overestimation'][simulation_num])
-        bolus_list.append(bolus_timelines_dict['underestimation'][simulation_num])
+        if len(inp_df) == 0:
+            print(f"{fname} SIZE = 0")
+            continue
         
-        print(f"True carbs: {[x.events for x in true_carb_list]}")
-        print(f"Pump carbs: {[x.events for x in pump_carb_list]}")
-        print(f"Bolus: {[x.events for x in bolus_list]}")
-        sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline_list=true_carb_list, pump_carb_timeline_list=pump_carb_list, bolus_timeline_list=bolus_list, duration_hrs=duration_hrs, controller=controller)            
+        # true carb timeline
+        true_carb_vals = list(inp_df['gt'])
+        carb_timeline_list = [CarbTimeline([t0], [Carb(x, "g", 180)]) for x in true_carb_vals]
+        
+        # predicted carb timeline
+        pred_carb_vals = list(inp_df['pred'])
+        pump_carb_timeline_list = [CarbTimeline([t0], [Carb(x, "g", 180)]) for x in pred_carb_vals]                
+        
+        # bolus timeline
+        bolus_timeline_list = [BolusTimeline([t0], [Bolus(x/cir, "U")]) for x in pred_carb_vals]
+                        
+        sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline_list=carb_timeline_list, pump_carb_timeline_list=pump_carb_timeline_list, bolus_timeline_list=bolus_timeline_list, duration_hrs=duration_hrs, controller=controller)
+        
         all_results, summary_results_df = run_simulations(sims,
-                        save_dir=sim_dir,
-                        save_results=True,
-                        num_procs=10)
-        # summary_means = summary_results_df.mean().to_frame().T
-        # summary_results_df = pd.concat([summary_means, summary_results_df], ignore_index=True)
-        fname = f"{simulation_num}.csv"
-        summary_results_df.to_csv(os.path.join(save_dir, fname))
-        plot_sim_results(all_results, n_sims_max_legend=10, save=True, save_path=os.path.join(save_dir, f'sim_results_{simulation_num}.png'))
-           
+            save_dir=save_dir,
+            save_results=False,
+            num_procs=10)
+        
+        summary_results_df['gt'] = true_carb_vals
+        summary_results_df['pred'] = pred_carb_vals
+        summary_results_df['scheduled_bolus'] = [x/cir for x in pred_carb_vals]
+        
+        print(f"Saving: {fname}")
+        summary_results_df.to_csv(os.path.join(save_dir, fname)) 
+        
+        if index == 22:
+            # true carb timeline
+            true_carb_vals = list(inp_df['gt'])
+            carb_timeline_list = [CarbTimeline([t0], [Carb(x, "g", 180)]) for x in true_carb_vals]
+            # predicted carb timeline
+            pred_carb_vals = list(inp_df['gt'])
+            pump_carb_timeline_list = [CarbTimeline([t0], [Carb(x, "g", 180)]) for x in pred_carb_vals]                                    
+            # bolus timeline
+            bolus_timeline_list = [BolusTimeline([t0], [Bolus(x/cir, "U")]) for x in pred_carb_vals]
+            sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline_list=carb_timeline_list, pump_carb_timeline_list=pump_carb_timeline_list, bolus_timeline_list=bolus_timeline_list, duration_hrs=duration_hrs, controller=controller)
+        
+            all_results, summary_results_df = run_simulations(sims,
+                save_dir=save_dir,
+                save_results=False,
+                num_procs=10)
+            
+            summary_results_df['gt'] = true_carb_vals
+            summary_results_df['pred'] = pred_carb_vals
+            summary_results_df['scheduled_bolus'] = [x/cir for x in pred_carb_vals]
+            fname = f"gt.csv"
+            print(f"Saving: {fname}")
+            summary_results_df.to_csv(os.path.join(save_dir, fname)) 
+  
     end = time()
     print(f"Time elapsed: {(end-start)/60.0} minutes")
     
-    # for pump_timeline in pump_timelines_dict:
-    #     print(f"Running {pump_timeline} simulations")
-    #     experiment_dir = os.path.join(save_dir, pump_timeline)
-    #     if not os.path.isdir(experiment_dir):
-    #         os.makedirs(experiment_dir)
-    #     pump_timeline_list = pump_timelines_dict[pump_timeline]
-    #     sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline_list=carb_timeline_list, pump_carb_timeline_list=pump_timeline_list, bolus_timeline=None, duration_hrs=duration_hrs, controller=controller)            
-    #     all_results, summary_results_df = run_simulations(sims,
-    #                     save_dir=experiment_dir,
-    #                     save_results=True,
-    #                     num_procs=10)
-    #     # summary_means = summary_results_df.mean().to_frame().T
-    #     # summary_results_df = pd.concat([summary_means, summary_results_df], ignore_index=True)
-    #     fname = f"{pump_timeline}.csv"
-    #     summary_results_df.to_csv(os.path.join(experiment_dir, fname))
-    #     plot_sim_results(all_results, n_sims_max_legend=10, save=True, save_path=os.path.join(experiment_dir, 'sim_results.png'))
+    
