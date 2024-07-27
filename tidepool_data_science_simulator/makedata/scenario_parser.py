@@ -458,7 +458,7 @@ class PatientConfig(object):
         glucose_history,
         carb_event_timeline,
         bolus_event_timeline,
-        heart_rate_timeline,
+        pa_timeline,
         action_timeline,
         glucose_sensitivity_factor_schedule=None,
         basal_blood_glucose_schedule=None,
@@ -523,7 +523,7 @@ class PatientConfig(object):
         self.insulin_production_rate_schedule = insulin_production_rate_schedule
         self.bolus_event_timeline = bolus_event_timeline
         self.carb_event_timeline = carb_event_timeline
-        self.heart_rate_timeline = heart_rate_timeline
+        self.pa_timeline = pa_timeline
         self.action_timeline = action_timeline
 
         self.glucose_history = glucose_history

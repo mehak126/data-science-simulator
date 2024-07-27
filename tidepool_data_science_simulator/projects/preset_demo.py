@@ -29,8 +29,8 @@ from datetime import datetime, timedelta
 from tidepool_data_science_simulator.visualization.sim_viz import plot_sim_results
 from tidepool_data_science_simulator.run import run_simulations
 
-from tidepool_data_science_simulator.models.events import CarbTimeline, BolusTimeline, HRTimeline
-from tidepool_data_science_simulator.models.measures import Carb, Bolus, HeartRate
+from tidepool_data_science_simulator.models.events import CarbTimeline, BolusTimeline, PhysicalActivityTimeline
+from tidepool_data_science_simulator.models.measures import Carb, Bolus, PhysicalActivity
 
 import datetime
 
@@ -43,7 +43,7 @@ formatter = mdates.DateFormatter('%H:%M')
 cmap = plt.cm.plasma_r
 
 
-def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, pump_carb_timeline=None ,bolus_timeline=None, hr_timeline=None, duration_hrs=1, controller=LoopController):
+def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, pump_carb_timeline=None ,bolus_timeline=None, duration_hrs=1, controller=LoopController, pa_timeline=None):
     """
     Look at resulting bgs from settings that are correct/incorrect for analysis.
 
@@ -56,12 +56,10 @@ def build_metabolic_sensitivity_sims(start_glucose_value=110, basal_rate=0.3, ci
         Parameters to vary
     """
     
-    
-    
     sims = {}
     # for exercise_preset_p in np.arange(0.2, 1.09, 0.2):
     for exercise_preset_p in [1.0]:
-        t0, patient_config = get_canonical_virtual_patient_model_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline, heart_rate_timeline=hr_timeline) # patient has many attributes e.g. starting glucose (default: 110), recommendatio accept probability, etc.    
+        t0, patient_config = get_canonical_virtual_patient_model_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline, pa_timeline=pa_timeline, sim_length=duration_hrs) # patient has many attributes e.g. starting glucose (default: 110), recommendatio accept probability, etc.    
         
         t0, sensor_config = get_canonical_sensor_config(t0, start_value = start_glucose_value) # sensor config has a blood glucose history. right now looks like the starting value repeated 'n' times every 5 minutes before t0
         
@@ -160,36 +158,23 @@ if __name__ == "__main__":
     t0 = DATETIME_DEFAULT
     # carb_timeline = CarbTimeline([t0], [Carb(40, "g", 180)])
     # pump_carb_timeline = CarbTimeline([t0], [Carb(40, "g", 180)])
+    # bolus_timeline = BolusTimeline([t0], [Bolus(1.0, "U")])
     
+    pa_type = 'walking'
+    pa_duration = 60 # physical activity duration in minutes
+    pa_timeline = PhysicalActivityTimeline(datetimes=[t0], events=[PhysicalActivity(activity=pa_type, duration=pa_duration)])
     
     carb_timeline = CarbTimeline()
     pump_carb_timeline = CarbTimeline()
-    
-    # bolus_timeline = BolusTimeline([t0], [Bolus(1.0, "U")])
     bolus_timeline = BolusTimeline()
+    # pa_timeline = PhysicalActivityTimeline()
     
     # controller = DoNothingController
     controller = LoopController
     
     duration_hrs = 8
-    
-    num_intervals = duration_hrs * 60 // 5 + 1 # convert hours to 5 minute intervals
-    pa_duration = 1
-    pa_intervals = pa_duration * 60 // 5
-    
-    hr_times = []
-    hr_vals = []
-    for i, hr_value in enumerate(range(num_intervals)):
-        new_time = t0 + timedelta(minutes=5 * (i))
-        if i < pa_intervals:
-            hr_value = 100
-        else:
-            hr_value = 0
-        hr_times.append(new_time)
-        hr_vals.append(HeartRate(hr_value, "BPM"))
-    hr_timeline = HRTimeline(hr_times, hr_vals)
 
-    sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=carb_timeline, pump_carb_timeline=pump_carb_timeline, bolus_timeline=bolus_timeline, duration_hrs=duration_hrs, controller=controller, hr_timeline=hr_timeline)
+    sims = build_metabolic_sensitivity_sims(start_glucose_value=start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, target_range_min=target_range_min, target_range_max=target_range_max, carb_timeline=carb_timeline, pump_carb_timeline=pump_carb_timeline, bolus_timeline=bolus_timeline, duration_hrs=duration_hrs, controller=controller, pa_timeline=pa_timeline)
 
     save_dir = "./simulation_results/"
     if not os.path.isdir(save_dir):

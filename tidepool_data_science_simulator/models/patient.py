@@ -68,7 +68,7 @@ class VirtualPatient(SimulationComponent):
         self.carb_event_timeline = patient_config.carb_event_timeline
         self.bolus_event_timeline = patient_config.bolus_event_timeline
         # mehak
-        self.heart_rate_timeline = patient_config.heart_rate_timeline
+        self.hr_trace = patient_config.hr_trace
 
         # TODO: prediction horizon should probably come from simple metabolism model
         prediction_horizon_hrs = 8
@@ -728,9 +728,9 @@ class VirtualPatientModel(VirtualPatient):
         # This is set from Loop controller
         total_bolus = self.bolus_event_timeline.get_event(self.time)
         
-        heart_rate = self.heart_rate_timeline.get_event(self.time)
-        print(f"HEART RATE AT {self.time}: {heart_rate}")
-        heart_rate_val = heart_rate.value
+        heart_rate_val = self.hr_trace.get_heart_rate(self.time)
+        print(f"HEART RATE AT {self.time}: {heart_rate_val}")
+        # heart_rate_val = heart_rate.value
 
         return total_bolus, total_carb, heart_rate_val
 
