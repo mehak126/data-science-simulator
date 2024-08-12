@@ -30,7 +30,7 @@ SINGLE_SETTING_DURATION = 1440
 DATETIME_DEFAULT = datetime.datetime(year=2019, month=8, day=15, hour=12, minute=0, second=0)
 
 
-def get_heartrate_trace(pa_timeline, t0, sim_length):
+def get_heartrate_trace(pa_timeline, t0, sim_length, heart_rate_trace=None):
     """
     Get the heart rate trace for the simulation, given the physical activity timeline
     """
@@ -43,10 +43,14 @@ def get_heartrate_trace(pa_timeline, t0, sim_length):
         pa = pa_timeline.events[dt]
         start_index = int((dt - t0).total_seconds() // 10)
         end_index = start_index + (pa.duration * 60 // 10)
+    
         
         for i in range(start_index, end_index):
             if i < num_steps:
-                hr_vals[i] = 100 # change based on activity
+                if heart_rate_trace:
+                    hr_vals[i] = heart_rate_trace[i]
+                else:
+                    hr_vals[i] = 150
                 
     hr_trace = HeartRateTrace(datetimes=hr_times, values=hr_vals)
     return hr_trace
@@ -147,7 +151,7 @@ def get_canonical_sensor_config(t0=DATETIME_DEFAULT, num_glucose_values=137, sta
     return t0, sensor_config
 
 
-def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None, pa_timeline=None, sim_length=0):
+def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None, pa_timeline=None, sim_length=0, heart_rate_trace=None):
     """
     Get canonical patient config
 
@@ -205,7 +209,7 @@ def get_canonical_risk_patient_config(t0=DATETIME_DEFAULT, start_glucose_value=1
     patient_config.recommendation_accept_prob = 0.0  # Does not accept any bolus recommendations
     patient_config.min_bolus_rec_threshold = 0.5  # Minimum size of bolus to accept
     patient_config.recommendation_meal_attention_time_minutes = 1e12  # Time since meal to take recommendations
-    patient_config.hr_trace = get_heartrate_trace(pa_timeline=pa_timeline, t0=t0, sim_length=sim_length)
+    patient_config.hr_trace = get_heartrate_trace(pa_timeline=pa_timeline, t0=t0, sim_length=sim_length, heart_rate_trace=heart_rate_trace)
 
     return t0, patient_config
 
@@ -319,12 +323,12 @@ def get_variable_risk_patient_config(random_state, t0=DATETIME_DEFAULT):
     return t0, patient_config
 
 
-def get_canonical_virtual_patient_model_config(random_state=None, start_glucose_value = 110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None, pa_timeline=None, sim_length=0):
+def get_canonical_virtual_patient_model_config(random_state=None, start_glucose_value = 110, basal_rate=0.3, cir=20.0, isf=150.0, carb_timeline=None, bolus_timeline=None, pa_timeline=None, sim_length=0, heart_rate_trace=None):
 
     if random_state is None:
         random_state = np.random.RandomState(0)
 
-    t0, patient_config = get_canonical_risk_patient_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline, pa_timeline=pa_timeline, sim_length=sim_length)
+    t0, patient_config = get_canonical_risk_patient_config(start_glucose_value = start_glucose_value, basal_rate=basal_rate, cir=cir, isf=isf, carb_timeline=carb_timeline, bolus_timeline=bolus_timeline, pa_timeline=pa_timeline, sim_length=sim_length, heart_rate_trace=heart_rate_trace)
 
     patient_config.recommendation_accept_prob = random_state.uniform(1.0, 1.0) # always accept recommendations
     patient_config.min_bolus_rec_threshold = random_state.uniform(0.0, 0.0) # todo: where does this factor in?

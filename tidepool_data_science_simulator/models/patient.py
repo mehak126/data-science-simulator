@@ -729,7 +729,6 @@ class VirtualPatientModel(VirtualPatient):
         total_bolus = self.bolus_event_timeline.get_event(self.time)
         
         heart_rate_val = self.hr_trace.get_heart_rate(self.time)
-        print(f"HEART RATE AT {self.time}: {heart_rate_val}")
         # heart_rate_val = heart_rate.value
 
         return total_bolus, total_carb, heart_rate_val
