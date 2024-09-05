@@ -32,26 +32,26 @@ DATETIME_DEFAULT = datetime.datetime(year=2019, month=8, day=15, hour=12, minute
 
 def get_heartrate_trace(pa_timeline, t0, sim_length, heart_rate_trace=None):
     """
-    Get the heart rate trace for the simulation, given the physical activity timeline
+    Get the heart rate trace for the simulation, given the physical activity timeline.
+    Note --> a single heart rate trace is passed in the current version. Can be changed to a list of traces corresponding to each PA in the pa_timeline
     """
     
     num_steps = sim_length * 3600 // 10
     hr_times = [t0 + timedelta(seconds=10 * i) for i in range(num_steps)]
     hr_vals = [0] * num_steps # initialize heart rate with all 0s
-    
+
     for dt in pa_timeline.events:
         pa = pa_timeline.events[dt]
         start_index = int((dt - t0).total_seconds() // 10)
         end_index = start_index + (pa.duration * 60 // 10)
-    
-        
+        hr_index = 0    
         for i in range(start_index, end_index):
             if i < num_steps:
                 if heart_rate_trace:
-                    hr_vals[i] = heart_rate_trace[i]
+                    hr_vals[i] = heart_rate_trace[hr_index]
+                    hr_index += 1
                 else:
                     hr_vals[i] = 150
-                
     hr_trace = HeartRateTrace(datetimes=hr_times, values=hr_vals)
     return hr_trace
 
@@ -78,7 +78,7 @@ def get_canonical_glucose_history(t0, num_glucose_values=137, start_value=110):
     return true_bg_history
 
 
-def get_canonical_risk_pump_config(t0=DATETIME_DEFAULT, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, bolus_timeline=None):
+def get_canonical_risk_pump_config(t0=DATETIME_DEFAULT, basal_rate=0.3, cir=20.0, isf=150.0, target_range_min=100, target_range_max=120, carb_timeline=None, bolus_timeline=None, pa_timeline=None):
     """
     Get canonical pump config
 
@@ -100,27 +100,68 @@ def get_canonical_risk_pump_config(t0=DATETIME_DEFAULT, basal_rate=0.3, cir=20.0
     else:
         pump_bolus_timeline = bolus_timeline
 
-    pump_config = PumpConfig(
-        basal_schedule=BasalSchedule24hr(
+    # old settings
+    # basal_schedule = BasalSchedule24hr(
+    #         t0,
+    #         start_times=[SINGLE_SETTING_START_TIME],
+    #         values=[BasalRate(basal_rate, "U/hr")],
+    #         duration_minutes=[SINGLE_SETTING_DURATION])
+    
+    # carb_ratio_schedule = SettingSchedule24Hr(
+    #         t0,
+    #         "CIR",
+    #         start_times=[SINGLE_SETTING_START_TIME],
+    #         values=[CarbInsulinRatio(cir, "g/U")],
+    #         duration_minutes=[SINGLE_SETTING_DURATION]
+    #     )
+    
+    # insulin_sensitivity_schedule = SettingSchedule24Hr(
+    #         t0,
+    #         "ISF",
+    #         start_times=[SINGLE_SETTING_START_TIME],
+    #         values=[InsulinSensitivityFactor(isf, "mg/dL/U")],
+    #         duration_minutes=[SINGLE_SETTING_DURATION]
+    #     )
+    
+    
+    activity_duration = 0
+    if pa_timeline:
+        for dt in pa_timeline.events: # hack --> will work because there's only 1 pa
+            pa = pa_timeline.events[dt]
+        activity_duration = pa.duration      
+    
+    # preset_starttime = t0+timedelta(hours=3) # 3 or 3.5 based on preset time
+    preset_starttime = t0
+    preset_endtime = preset_starttime+timedelta(hours=1)+timedelta(minutes=activity_duration)
+    single_setting_datetime = datetime.datetime.combine(t0.date(), SINGLE_SETTING_START_TIME)   
+    dur1 = (preset_starttime - single_setting_datetime).total_seconds() / 60
+    dur2 = (preset_endtime - preset_starttime).total_seconds() / 60
+    dur3 = (single_setting_datetime + timedelta(days=1) - preset_endtime).total_seconds() / 60
+    
+    basal_schedule = BasalSchedule24hr(
             t0,
-            start_times=[SINGLE_SETTING_START_TIME],
-            values=[BasalRate(basal_rate, "U/hr")],
-            duration_minutes=[SINGLE_SETTING_DURATION]
-        ),
-        carb_ratio_schedule=SettingSchedule24Hr(
+            start_times=[SINGLE_SETTING_START_TIME, preset_starttime.time(), preset_endtime.time()],
+            values=[BasalRate(basal_rate, "U/hr"), BasalRate(basal_rate, "U/hr"), BasalRate(basal_rate, "U/hr")],
+            duration_minutes=[dur1, dur2, dur3])
+    
+    carb_ratio_schedule = SettingSchedule24Hr(
             t0,
             "CIR",
-            start_times=[SINGLE_SETTING_START_TIME],
-            values=[CarbInsulinRatio(cir, "g/U")],
-            duration_minutes=[SINGLE_SETTING_DURATION]
-        ),
-        insulin_sensitivity_schedule=SettingSchedule24Hr(
+            start_times=[SINGLE_SETTING_START_TIME, preset_starttime.time(), preset_endtime.time()],
+            values=[CarbInsulinRatio(cir, "g/U"), CarbInsulinRatio(cir, "g/U"), CarbInsulinRatio(cir, "g/U")],
+            duration_minutes=[dur1, dur2, dur3])
+    
+    insulin_sensitivity_schedule = SettingSchedule24Hr(
             t0,
             "ISF",
-            start_times=[SINGLE_SETTING_START_TIME],
-            values=[InsulinSensitivityFactor(isf, "mg/dL/U")],
-            duration_minutes=[SINGLE_SETTING_DURATION]
-        ),
+            start_times=[SINGLE_SETTING_START_TIME, preset_starttime.time(), preset_endtime.time()],
+            values=[InsulinSensitivityFactor(isf, "mg/dL/U"), InsulinSensitivityFactor(isf, "mg/dL/U"), InsulinSensitivityFactor(isf, "mg/dL/U")],
+            duration_minutes=[dur1, dur2, dur3])
+    
+    pump_config = PumpConfig(
+        basal_schedule=basal_schedule,
+        carb_ratio_schedule=carb_ratio_schedule,
+        insulin_sensitivity_schedule=insulin_sensitivity_schedule,
         target_range_schedule=TargetRangeSchedule24hr(
             t0,
             start_times=[SINGLE_SETTING_START_TIME],

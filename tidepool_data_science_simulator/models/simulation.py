@@ -433,13 +433,16 @@ class SettingSchedule24Hr(SimulationComponent):
         percentage_change: float
             The amount to change the setting. 0.1 means 10% more, -0.1 means 10% less
         """
-
         if self.percentage_change is not None:
             raise ValueError("Cannot set multiple overrides.")
 
-        for (start_time, end_time), setting in self.schedule.items():
-            setting.value = setting.value * (1.0 + percentage_change)
-            self.schedule[(start_time, end_time)] = setting
+        index = 0
+        for (start_time, end_time), setting in self.schedule.items(): # hack --> will work bc 1 activity
+            if index == 1:
+                setting.value = setting.value * (1.0 + percentage_change)
+                self.schedule[(start_time, end_time)] = setting
+            index += 1
+            
         self.percentage_change = percentage_change
 
     def unset_override(self):
