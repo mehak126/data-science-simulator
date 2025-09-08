@@ -423,7 +423,7 @@ def get_canonical_risk_patient_config(
     )
 
     patient_config = PatientConfig(
-        basal_schedule=basal_schedule
+        basal_schedule=basal_schedule,
         carb_ratio_schedule=SettingSchedule24Hr(
             t0,
             "CIR",
@@ -604,7 +604,7 @@ def get_canonical_virtual_patient_model_config(
     patient_config.carb_count_noise_percentage = random_state.uniform(0.0, 0.0)
     patient_config.report_bolus_probability = random_state.uniform(1.0, 1.0)
     patient_config.report_carb_probability = random_state.uniform(1.0, 1.0)
-    patient_config.recommendation_meal_attention_time_minutes = (10)
+    patient_config.recommendation_meal_attention_time_minutes = 10
 
     patient_config.prebolus_minutes_choices = [0]
     patient_config.carb_reported_minutes_choices = [0]
